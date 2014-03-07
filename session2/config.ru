@@ -1,4 +1,5 @@
 require 'rack'
-require './template'
+require 'mustache'
+require './refactor'
 
 run SurfCarmel.new

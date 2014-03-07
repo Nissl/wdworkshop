@@ -1,41 +1,20 @@
-require 'mustache'
-require 'pry'
-
 class SurfCarmel
-  def initialize
-    @journal_entries = journal_entries
-    @water_conditions = water_conditions
-  end
-
   def call(env)
     request = Rack::Request.new(env)
-    if request.path == '/'
-      @data = { 'journal_entries' => @journal_entries,
-                'water_conditions' => @water_conditions}
-      render :index
-    elsif request.post? && request.path == '/create_journal_entry'
-      new_entry = {title: request.params['title'], description: request.params['description']}
-      @journal_entries.unshift(new_entry)
-      redirect_to '/'
+    if request.get? && request.path == '/'
+      template = File.read("templates/index.mustache")
+      content = Mustache.render(template, {journal_entries: journal_entries, water_conditions: water_conditions})
+      [200, {}, [content]]
     else
       local_file = "site#{env['REQUEST_PATH']}"
       if File.exists? local_file
         File.open(local_file, 'r') do |file|
-          return [200, {},  [file.read]]
+          [200, {},  [file.read]]
         end
       else
         [404, {}, ["File does not exist."]]
       end
     end
-  end
-
-  def render(template)
-    content = Mustache.render(File.read("templates/#{template.to_s}.mustache"), @data)
-    [200, {}, [content]]
-  end
-
-  def redirect_to(path)
-    [302, {'Location' => path}, ['302 found']]
   end
 
   def journal_entries

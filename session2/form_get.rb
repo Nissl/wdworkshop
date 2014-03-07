@@ -1,27 +1,28 @@
-require 'mustache'
-require 'pry'
-
 class SurfCarmel
   def initialize
-    @journal_entries = journal_entries
-    @water_conditions = water_conditions
+    @journal_entries = initial_journal_entries
+    @water_conditions = initial_water_conditions
   end
 
   def call(env)
     request = Rack::Request.new(env)
-    if request.path == '/'
-      @data = { 'journal_entries' => @journal_entries,
-                'water_conditions' => @water_conditions}
-      render :index
-    elsif request.post? && request.path == '/create_journal_entry'
-      new_entry = {title: request.params['title'], description: request.params['description']}
-      @journal_entries.unshift(new_entry)
-      redirect_to '/'
+    if request.get? && request.path == '/'
+      new_entry_title = request.params["new_entry_title"]
+      new_entry_description = request.params["new_entry_description"]
+      template = File.read("templates/index.mustache")
+      updated_journal_entries = @journal_entries.unshift({title: new_entry_title, description: new_entry_description})
+      content = Mustache.render(template, {journal_entries: updated_journal_entries, water_conditions: @water_conditions})
+      [200, {}, [content]]
+    elsif request.get? && request.path == '/create_journal_entry'
+      template = File.read("templates/index.mustache")
+      updated_journal_entries = @journal_entries.unshift({title: new_entry_title, description: new_entry_description})
+      content = Mustache.render(template, {journal_entries: updated_journal_entries, water_conditions: @water_conditions})
+      [200, {}, [content]]
     else
       local_file = "site#{env['REQUEST_PATH']}"
       if File.exists? local_file
         File.open(local_file, 'r') do |file|
-          return [200, {},  [file.read]]
+          [200, {},  [file.read]]
         end
       else
         [404, {}, ["File does not exist."]]
@@ -29,16 +30,7 @@ class SurfCarmel
     end
   end
 
-  def render(template)
-    content = Mustache.render(File.read("templates/#{template.to_s}.mustache"), @data)
-    [200, {}, [content]]
-  end
-
-  def redirect_to(path)
-    [302, {'Location' => path}, ['302 found']]
-  end
-
-  def journal_entries
+  def initial_journal_entries
     [{title: 'A Look Back: "Huge Waves!"',
       description: <<-DESCRIPTION
       "Today's waves are record setting! 10 foot waves coming from the south and heading to the north. Hide your kids, hide your wife. Don't come out without your board!" A write up about the record setting day of surfing that went down in the history books. Don't miss this recount of the biggest surfing day in Carmel, CA.
@@ -58,7 +50,7 @@ class SurfCarmel
     }]
   end
 
-  def water_conditions
+  def initial_water_conditions
     [{date: 'February 19, 2014',
       description: 'Water temperature is estimated to be between 70-80 degrees fahrenheit, and the average wave height is going to be 4.5 feet. The best surfing time is going to be 8-10am in the morning. It will be a little cold at that time though, around 45 F, so be prepared!'
     },{date: 'February 20, 2014',
