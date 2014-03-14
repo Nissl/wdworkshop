@@ -1,18 +1,13 @@
 require 'csv'
 
 class SurfCarmel
-  def initialize
-    @journal_entries = read_journal_entries
-    @water_conditions = read_water_conditions
-  end
-
   def call(env)
     request = Rack::Request.new(env)
     if get('/', request)
-      @data = {journal_entries: @journal_entries, water_conditions: @water_conditions}
+      @data = {journal_entries: read_journal_entries, water_conditions: read_water_conditions}
       render :index
     elsif post('/create_journal_entry', request)
-      @journal_entries.unshift(request.params)
+      write_journal_entries(request.params)
       redirect_to '/'
     else
       serve_static_file(env)
@@ -51,12 +46,14 @@ class SurfCarmel
   def read_journal_entries
     entries = CSV.read("data/journal_entries.csv")
     entries.reduce([]) do |result, entry|
-      result << {title: entry[0], description: entry[1]} 
+      result << {title: entry[0], description: entry[1]}
     end
   end
 
-  def write_journal_entries
-    
+  def write_journal_entries(entry)
+    CSV.open("data/journal_entries.csv", "a") do |csv|
+      csv << [entry['title'], entry['description']]
+    end
   end
 
   def read_water_conditions
