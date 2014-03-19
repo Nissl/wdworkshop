@@ -1,5 +1,5 @@
 require 'rack'
 require 'mustache'
-require './search'
+require './retrieval'
 
 run SurfCarmel.new
