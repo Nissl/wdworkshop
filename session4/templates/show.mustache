@@ -22,6 +22,11 @@
         {{#journal_entry}}
           <h4><a href="#" class="subheader">{{title}}</a></h4>
           <p>{{description}}</p>
+          <form action="/journal_entries/{{index}}" method="post">
+
+            <input type="hidden" name="method" value="delete">
+            <input type="submit" value="Delete">
+          </form>
         {{/journal_entry}}
       </div>
     </div>

@@ -1,14 +1,32 @@
 require 'csv'
 
 class SurfCarmel
+  def initialize
+    @journal_entries = read_journal_entries
+  end
+
   def call(env)
     request = Rack::Request.new(env)
     if get('/', request)
-      @journal_entries ||= read_journal_entries
       @data = {journal_entries: @journal_entries, water_conditions: read_water_conditions}
       render :index
     elsif post('/create_journal_entry', request)
       write_journal_entries(request.params)
+      redirect_to '/'
+    elsif get('/search_journal_entry', request)
+      search_term = request.params["search_word"]
+      found_entries = @journal_entries.select {|entry| entry[:title].include?(search_term) || entry[:description].include?(search_term)}
+      @data = {journal_entries: found_entries }
+      render :search_results
+    elsif request.get? && request.path =~ /^\/journal_entries\/.*$/
+      entry_id = (/^\/journal_entries\/(.*)$/.match(request.path))[1]
+      selected_entry = @journal_entries.select {|entry| entry[:index] == entry_id}.first
+      @data = {journal_entry: selected_entry}
+      render :show
+    elsif request.post? && request.path =~ /^\/journal_entries\/.*$/ && request.params['method'] == 'delete'
+      entry_id = (/^\/journal_entries\/(.*)$/.match(request.path))[1]
+      @journal_entries.delete_if {|entry| entry[:index] == entry_id}
+      save_journal_entries(@journal_entries)
       redirect_to '/'
     else
       serve_static_file(env)
@@ -55,6 +73,13 @@ class SurfCarmel
   def write_journal_entries(entry)
     CSV.open("data/journal_entries.csv", "a") do |csv|
       csv << [journal_entry_count+1, entry['title'], entry['description']]
+    end
+    @journal_entries = nil
+  end
+
+  def save_journal_entries(entries)
+    CSV.open("data/journal_entries.csv", "w") do |csv|
+      csv = entries
     end
     @journal_entries = nil
   end
